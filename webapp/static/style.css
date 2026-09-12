@@ -1,0 +1,110 @@
+:root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #111111);
+    --hint: var(--tg-theme-hint-color, #707579);
+    --accent: var(--tg-theme-link-color, #3390ec);
+    --section-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px 16px 32px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+
+h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.subtitle {
+    color: var(--hint);
+    font-size: 15px;
+    margin: 0 0 20px;
+}
+
+.card {
+    background: var(--section-bg);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+}
+
+.diff-wrong {
+    text-decoration: line-through;
+    color: #e05252;
+    font-weight: 700;
+}
+
+.diff-correct {
+    text-decoration: underline;
+    color: #34a853;
+    font-weight: 700;
+}
+
+.phrase {
+    font-size: 20px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.tip {
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.tip::before {
+    content: "💡 ";
+}
+
+.metric-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+    margin-bottom: 4px;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.metric-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.metric-bar-track {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(127, 127, 127, 0.25);
+    overflow: hidden;
+}
+
+.metric-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 400ms ease-out;
+}
+
+.transcript-label {
+    color: var(--hint);
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.loading, .error {
+    color: var(--hint);
+    font-size: 15px;
+}

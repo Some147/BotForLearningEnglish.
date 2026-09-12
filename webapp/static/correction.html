@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Разбор ошибок</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <h1>Разбор ошибок</h1>
+    <p class="subtitle">Что было не так и как сказать правильно</p>
+
+    <div id="content">
+        <p class="loading">Загружаю...</p>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        tg?.ready();
+        tg?.expand();
+
+        const sessionId = window.location.pathname.split("/").pop();
+
+        async function load() {
+            const container = document.getElementById("content");
+            try {
+                const res = await fetch(`/api/assessment/${sessionId}`);
+                if (!res.ok) throw new Error("not found");
+                const data = await res.json();
+                render(container, data.content);
+            } catch (e) {
+                container.innerHTML = '<p class="error">Не удалось загрузить разбор ошибок.</p>';
+            }
+        }
+
+        function render(container, content) {
+            if (!content.has_errors) {
+                container.innerHTML = `
+                    <div class="card">
+                        <p class="phrase">✅ ${escapeHtml(content.original)}</p>
+                        <p class="tip">${escapeHtml(content.tip_ru)}</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="card">
+                    <p class="phrase">
+                        <span class="diff-wrong">${escapeHtml(content.diff_wrong_part)}</span><br/>
+                        <span class="diff-correct">${escapeHtml(content.diff_correct_part)}</span>
+                    </p>
+                    <hr style="border: none; border-top: 1px solid rgba(127,127,127,.25); margin: 12px 0;" />
+                    <p class="tip">${escapeHtml(content.explanation_ru ?? "")}</p>
+                </div>`;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        load();
+    </script>
+</body>
+</html>
