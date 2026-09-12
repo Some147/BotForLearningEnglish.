@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 
 from bot.config import settings
-from bot.handlers import start, voice
+from bot.handlers import menu, start, voice
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ async def main() -> None:
     dp = Dispatcher(storage=storage)
 
     dp.include_router(start.router)
+    dp.include_router(menu.router)
     dp.include_router(voice.router)
 
     logger.info("Bot starting...")

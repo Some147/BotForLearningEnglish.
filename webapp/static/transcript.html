@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Текст сообщения</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <h1>Текст сообщения</h1>
+    <p class="subtitle">Нажми на слово, чтобы посмотреть значение</p>
+
+    <div id="content">
+        <p class="loading">Загружаю...</p>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        tg?.ready();
+        tg?.expand();
+
+        const sessionId = window.location.pathname.split("/").pop();
+        let fullTranscript = "";
+
+        async function load() {
+            const container = document.getElementById("content");
+            try {
+                const res = await fetch(`/api/assessment/${sessionId}`);
+                if (!res.ok) throw new Error("not found");
+                const data = await res.json();
+                fullTranscript = data.pronunciation.transcript;
+                render(container, fullTranscript);
+            } catch (e) {
+                container.innerHTML = '<p class="error">Не удалось загрузить текст сообщения.</p>';
+            }
+        }
+
+        function render(container, transcript) {
+            const words = transcript.split(/(\s+)/).filter(w => w.length > 0);
+            const tokensHtml = words.map(w => {
+                if (/^\s+$/.test(w)) return w;
+                const clean = w.replace(/[.,!?;:]+$/, "");
+                return `<span class="word-token" data-word="${escapeAttr(clean)}">${escapeHtml(w)}</span>`;
+            }).join("");
+
+            container.innerHTML = `
+                <div class="card">
+                    <p class="transcript-label">Английский</p>
+                    <p class="phrase" id="transcript-text">${tokensHtml}</p>
+                </div>
+                <button class="translate-btn" id="translate-phrase-btn">🔄 Перевести</button>
+                <div id="popup-root"></div>`;
+
+            document.querySelectorAll(".word-token").forEach(el => {
+                el.addEventListener("click", () => onWordClick(el.dataset.word));
+            });
+            document.getElementById("translate-phrase-btn")
+                .addEventListener("click", onPhraseTranslate);
+        }
+
+        async function onWordClick(word) {
+            showPopup(word, "Перевожу...", "");
+            try {
+                const res = await fetch("/api/translate/word", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ word, context_sentence: fullTranscript }),
+                });
+                const data = await res.json();
+                showPopup(word, data.translation, data.transcription ?? "");
+            } catch (e) {
+                showPopup(word, "Не удалось перевести", "");
+            }
+        }
+
+        async function onPhraseTranslate() {
+            showPopup("Фраза целиком", "Перевожу...", "");
+            try {
+                const res = await fetch("/api/translate/phrase", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phrase: fullTranscript }),
+                });
+                const data = await res.json();
+                showPopup("Фраза целиком", data.translation, "");
+            } catch (e) {
+                showPopup("Фраза целиком", "Не удалось перевести", "");
+            }
+        }
+
+        function showPopup(word, translation, transcription) {
+            const root = document.getElementById("popup-root");
+            root.innerHTML = `
+                <div class="popup-overlay" id="popup-overlay">
+                    <div class="popup-sheet">
+                        <p class="popup-word">${escapeHtml(word)}</p>
+                        ${transcription ? `<p class="popup-transcription">${escapeHtml(transcription)}</p>` : ""}
+                        <p class="popup-translation">${escapeHtml(translation)}</p>
+                    </div>
+                </div>`;
+            document.getElementById("popup-overlay").addEventListener("click", (e) => {
+                if (e.target.id === "popup-overlay") root.innerHTML = "";
+            });
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str ?? "";
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return escapeHtml(str).replace(/"/g, "&quot;");
+        }
+
+        load();
+    </script>
+</body>
+</html>

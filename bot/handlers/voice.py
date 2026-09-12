@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 
 from aiogram import Bot, F, Router
@@ -9,6 +8,7 @@ from bot.keyboards import assessment_result_keyboard
 from bot.models import AssessmentResult
 from bot.services import db
 from bot.services.audio_utils import cleanup, ogg_to_wav
+from bot.services.dialogue import continue_dialogue
 from bot.services.grading import grade_transcript
 from bot.services.stt_pronunciation import assess_pronunciation
 from bot.services.tts import synthesize_voice
@@ -18,10 +18,6 @@ router = Router(name="voice")
 
 POINTS_PER_ATTEMPT = 3
 
-# В проде это должно приходить от LLM-собеседника (следующая реплика диалога
-# с учётом контекста) — здесь фиксированный пример для наглядности скелета.
-NEXT_QUESTION = "Nice! What do you usually do on weekends?"
-
 
 def _build_correction_text(content) -> str:
     if not content.has_errors:
@@ -29,8 +25,8 @@ def _build_correction_text(content) -> str:
 
     return (
         f"🔍 Заметил ошибки в твоём сообщении:\n\n"
-        f"Yes, I ~~{content.diff_wrong_part}~~\n"
-        f"Yes, I __{content.diff_correct_part}__"
+        f"~~{content.diff_wrong_part}~~\n"
+        f"__{content.diff_correct_part}__"
     )
 
 
@@ -47,16 +43,17 @@ async def handle_voice_answer(message: Message, state: FSMContext, bot: Bot) -> 
     wav_path = await ogg_to_wav(ogg_bytes)
 
     try:
-        # Azure Pronunciation Assessment и LLM-грейдинг независимы друг от
-        # друга по входным данным (аудио vs текст), поэтому гоняем параллельно —
-        # это половина задержки по сравнению с последовательным вызовом.
+        # Azure Pronunciation Assessment по аудио идёт независимо от LLM-грейдинга
+        # по тексту — их можно было бы запустить параллельно через asyncio.gather,
+        # но грейдинг требует транскрипт ИЗ pronunciation assessment, так что
+        # реальной параллельности тут нет (зависимость данных, не только по времени).
         pronunciation_scores = await assess_pronunciation(wav_path)
     finally:
         cleanup(wav_path)
 
     content_scores = await grade_transcript(pronunciation_scores.transcript)
 
-    new_total = await db.add_points(message.from_user.id, POINTS_PER_ATTEMPT)
+    await db.add_points(message.from_user.id, POINTS_PER_ATTEMPT)
 
     result = AssessmentResult(
         session_id=session_id,
@@ -73,8 +70,11 @@ async def handle_voice_answer(message: Message, state: FSMContext, bot: Bot) -> 
         reply_markup=assessment_result_keyboard(session_id, POINTS_PER_ATTEMPT),
     )
 
-    # Следующая реплика бота — голосом, продолжаем диалог
-    voice_path = await synthesize_voice(NEXT_QUESTION)
+    # Следующая реплика — от диалогового движка, с учётом темы и истории,
+    # а не захардкоженный вопрос.
+    next_reply = await continue_dialogue(message.from_user.id, pronunciation_scores.transcript)
+
+    voice_path = await synthesize_voice(next_reply)
     voice_file = voice_path.open("rb")
     try:
         await message.answer_voice(voice=voice_file)
@@ -88,8 +88,16 @@ async def handle_text_answer(message: Message, state: FSMContext) -> None:
     """Текстовый ответ вместо голосового — оцениваем только content-метрики,
     т.к. Pronunciation Assessment требует аудио."""
     content_scores = await grade_transcript(message.text)
-    session_id = uuid.uuid4().hex
 
-    new_total = await db.add_points(message.from_user.id, POINTS_PER_ATTEMPT)
-
+    await db.add_points(message.from_user.id, POINTS_PER_ATTEMPT)
     await message.answer(_build_correction_text(content_scores))
+
+    next_reply = await continue_dialogue(message.from_user.id, message.text)
+
+    voice_path = await synthesize_voice(next_reply)
+    voice_file = voice_path.open("rb")
+    try:
+        await message.answer_voice(voice=voice_file)
+    finally:
+        voice_file.close()
+        voice_path.unlink(missing_ok=True)

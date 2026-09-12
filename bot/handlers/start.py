@@ -4,15 +4,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from bot.keyboards import main_menu_keyboard
+from bot.services.dialogue import start_new_topic
 from bot.services.tts import synthesize_voice
 from bot.states import Conversation
 
 router = Router(name="start")
-
-OPENING_LINE = (
-    "Hey! I'm your English speaking partner. "
-    "Let's start — how are you doing today?"
-)
 
 
 @router.message(CommandStart())
@@ -22,11 +18,16 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     await message.answer(
         f"Hi, {name}! 👋 Я — твой собеседник для практики английского.\n\n"
         f"Отвечай голосовыми сообщениями, я буду разбирать ошибки "
-        f"и оценивать произношение.",
+        f"и оценивать произношение.\n\n"
+        f"Кнопка «Меню» — сменить тему разговора в любой момент.",
         reply_markup=main_menu_keyboard(),
     )
 
-    voice_path = await synthesize_voice(OPENING_LINE)
+    # Тема по умолчанию при первом запуске — 'daily_life', пользователь может
+    # сразу сменить через "Меню".
+    opening_line = await start_new_topic(message.from_user.id, "daily_life")
+
+    voice_path = await synthesize_voice(opening_line)
     voice_file = voice_path.open("rb")
     try:
         await message.answer_voice(voice=voice_file)
@@ -42,7 +43,7 @@ async def show_help(message: Message) -> None:
     await message.answer(
         "❓ Не знаешь, что ответить — просто скажи об этом голосом, я подскажу.\n"
         "🎙 Отвечай голосовым сообщением на мой вопрос.\n"
-        "🔄 Хочешь сменить тему — нажми «Завершить» и начни заново."
+        "🔀 Хочешь сменить тему — нажми «Меню»."
     )
 
 

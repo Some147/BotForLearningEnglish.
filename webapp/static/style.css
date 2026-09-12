@@ -108,3 +108,63 @@ h1 {
     color: var(--hint);
     font-size: 15px;
 }
+
+.word-token {
+    cursor: pointer;
+    border-bottom: 1px dashed var(--hint);
+}
+
+.word-token:active {
+    background: rgba(51, 144, 236, 0.15);
+}
+
+.translate-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.translate-btn:active {
+    opacity: 0.85;
+}
+
+.popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: flex-end;
+    z-index: 10;
+}
+
+.popup-sheet {
+    background: var(--bg);
+    color: var(--text);
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+}
+
+.popup-word {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.popup-transcription {
+    color: var(--hint);
+    font-size: 14px;
+    margin: 0 0 10px;
+}
+
+.popup-translation {
+    font-size: 17px;
+    margin: 0;
+}

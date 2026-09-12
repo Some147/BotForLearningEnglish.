@@ -13,3 +13,12 @@ CREATE TABLE IF NOT EXISTS user_points (
 );
 
 CREATE INDEX IF NOT EXISTS idx_assessments_created_at ON assessments (created_at);
+
+-- История текущей диалоговой сессии пользователя. Одна активная сессия
+-- на пользователя: новая тема из "Меню" сбрасывает историю (см. reset_session).
+CREATE TABLE IF NOT EXISTS conversation_sessions (
+    user_id     BIGINT PRIMARY KEY,
+    topic       TEXT NOT NULL DEFAULT 'general',
+    history     JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
